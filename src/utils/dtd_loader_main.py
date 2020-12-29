@@ -30,7 +30,8 @@ DTD_DEST_ZIP_FILE = "dtd-r1.0.1.tar.gz"
 _IMAGE_SUB_DIR = 'dtd/images'
 MAT_FILE = 'dtd/imdb/imdb.mat'
 
-def extract_image_centers(image:np.ndarray, patch_size: Tuple):
+
+def extract_image_centers(image: np.ndarray, patch_size: Tuple):
     """Return a patch from the center of the image with the given size"""
     input_shape = image.shape
     if patch_size[0] > input_shape[0] or patch_size[1] > input_shape[1]:
@@ -67,13 +68,16 @@ def _get_images_from_mat(mat):
     class_id = image_data['class'][0][0][0]
     return id, name, set, class_id
 
+
 def print_class_names(class_names):
     for i in range(len(class_names)):
         print('{0}: {1}'.format(i, class_names[i]))
 
+
 def get_class_names(filename: str) -> dict:
     mat = _read_mat(filename)
     return _get_class_names_from_mat(mat)
+
 
 def get_data_sets(filename: str):
     """Get the data set description from the file"""
@@ -212,7 +216,8 @@ def download_dataset(dataset_dir='.'):
     else:
         print('File already downloaded')
 
-def extract_dataset(dataset_dir = '.'):
+
+def extract_dataset(dataset_dir='.'):
     # check if one of the extracted directories already exists, if yes, do not extract
     image_dir = os.path.join(dataset_dir, _IMAGE_SUB_DIR)
     if not os.path.exists(image_dir):
@@ -223,7 +228,7 @@ def extract_dataset(dataset_dir = '.'):
         print('Image directory exists: not extracting files')
 
 
-def download_and_convert(dataset_dir = '.', dest_dir_root='.'):
+def download_and_convert(dataset_dir='.', dest_dir_root='.'):
     """Download the DTD file, unpack it and convert the data set."""
     # first check the resulting directories, if they exist, do not do anything
     train_dir = os.path.join(dest_dir_root, 'dtd_train')
@@ -243,4 +248,6 @@ def download_and_convert(dataset_dir = '.', dest_dir_root='.'):
 
 
 if __name__ == '__main__':
-    download_and_convert()
+    download_and_convert(
+        dataset_dir='data/',
+        dest_dir_root='data/')

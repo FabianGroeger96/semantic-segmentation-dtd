@@ -1,4 +1,5 @@
 import os
+import math
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -38,7 +39,7 @@ class DTDDataset:
 
         # configs
         # TODO: move in seperate config file
-        self.batch_size = 64
+        self.batch_size = 16
         self.n_classes = 47
         self.patch_size = 128
         self.patch_channels = 1  # 1: gray, 3: color
@@ -54,12 +55,17 @@ class DTDDataset:
         self.test_ds = None
 
         # load datasets
-        self.train_ds, _ = self.create_dataset(
+        self.train_ds, train_size = self.create_dataset(
             os.path.join(data_path, 'dtd_train'))
-        self.val_ds, _ = self.create_dataset(
+        self.train_steps = math.floor(train_size / self.batch_size)
+
+        self.val_ds, val_size = self.create_dataset(
             os.path.join(data_path, 'dtd_val'))
-        self.test_ds, _ = self.create_dataset(
+        self.val_steps = math.floor(val_size / self.batch_size)
+
+        self.test_ds, test_size = self.create_dataset(
             os.path.join(data_path, 'dtd_test'))
+        self.test_steps = math.floor(test_size / self.batch_size)
 
     def _parse_function(self, image_filename, label_filename, channels: int):
         """

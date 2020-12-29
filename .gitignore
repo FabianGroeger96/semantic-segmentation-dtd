@@ -264,4 +264,6 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/vim,jupyternotebooks,python,pycharm+all
 
+# Project specifc
 data/
+.DS_Store
