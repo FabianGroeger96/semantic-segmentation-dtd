@@ -2,8 +2,10 @@ import tensorflow as tf
 
 from src.dataset.dtd_dataset import DTDDataset
 from src.models.simple_fcn import SimpleFCN
+from src.models.u_net.u_net_model import UNet
 from src.settings.settings import Settings
 from src.utils.utils import create_experiment_folders
+
 
 if __name__ == '__main__':
     # global settings
@@ -13,11 +15,17 @@ if __name__ == '__main__':
     dataset = DTDDataset.get_instance(data_path, settings=settings)
 
     # create and build the model
-    model = SimpleFCN(settings.n_classes,
-                      settings.patch_size,
-                      settings.patch_border,
-                      settings.patch_channels,
-                      dropout_rate=0.3)
+    # model = SimpleFCN(settings.n_classes,
+                      # settings.patch_size,
+                      # settings.patch_border,
+                      # settings.patch_channels,
+                      # dropout_rate=0.3)
+    model = UNet(num_classes=settings.n_classes,
+                 img_size=settings.patch_size,
+                 img_border=settings.patch_border,
+                 nr_channels=settings.patch_channels)
+
+    # build the model
     in_shape = [settings.batch_size,
                 settings.patch_size,
                 settings.patch_size,

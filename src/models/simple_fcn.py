@@ -3,13 +3,13 @@ import tensorflow as tf
 
 class SimpleFCN(tf.keras.Model):
 
-    def __init__(self, nr_classes, img_size, img_border, nr_channels, dropout_rate, name='SimpleFCN', **kwargs):
+    def __init__(self, num_classes, img_size, img_border, nr_channels, dropout_rate, name='SimpleFCN', **kwargs):
         super(SimpleFCN, self).__init__(**kwargs)
 
         # configs
         self.model_name = name
         self.img_size_out = img_size-2*img_border
-        self.out_shape = (self.img_size_out**2, nr_classes)
+        self.out_shape = (self.img_size_out**2, num_classes)
 
         # conv block 1
         self.conv_1 = tf.keras.layers.Conv2D(input_shape=(None, None, nr_channels), filters=64, kernel_size=3, padding='valid')
@@ -30,7 +30,7 @@ class SimpleFCN(tf.keras.Model):
         self.ac_3 = tf.keras.layers.Activation('relu')
 
         # fully connected conv block (output)
-        self.conv_out = tf.keras.layers.Conv2D(filters=nr_classes, kernel_size=1,
+        self.conv_out = tf.keras.layers.Conv2D(filters=num_classes, kernel_size=1,
                                                kernel_initializer=tf.keras.initializers.TruncatedNormal(mean=0.0, stddev=0.001, seed=None))
         self.dropout_out = tf.keras.layers.Dropout(dropout_rate)
         self.bn_out = tf.keras.layers.BatchNormalization()
