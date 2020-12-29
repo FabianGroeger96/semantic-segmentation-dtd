@@ -3,26 +3,28 @@ import tensorflow as tf
 
 class SimpleFCN(tf.keras.Model):
 
-    def __init__(self, nr_classes, nr_channels, dropout_rate, name='SimpleFCN', **kwargs):
+    def __init__(self, nr_classes, img_size, img_border, nr_channels, dropout_rate, name='SimpleFCN', **kwargs):
         super(SimpleFCN, self).__init__(**kwargs)
 
         # configs
         self.model_name = name
+        self.img_size_out = img_size-2*img_border
+        self.out_shape = (self.img_size_out**2, nr_classes)
 
         # conv block 1
-        self.conv_1 = tf.keras.layers.Conv2D(input_shape=(None, None, nr_channels), filters=64, kernel_size=3, padding='same')
+        self.conv_1 = tf.keras.layers.Conv2D(input_shape=(None, None, nr_channels), filters=64, kernel_size=3, padding='valid')
         self.dropout_1 = tf.keras.layers.Dropout(dropout_rate)
         self.bn_1 = tf.keras.layers.BatchNormalization()
         self.ac_1 = tf.keras.layers.Activation('relu')
 
         # conv block 2
-        self.conv_2 = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same')
+        self.conv_2 = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='valid')
         self.dropout_2 = tf.keras.layers.Dropout(dropout_rate)
         self.bn_2 = tf.keras.layers.BatchNormalization()
         self.ac_2 = tf.keras.layers.Activation('relu')
 
         # conv block 3
-        self.conv_3 = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same')
+        self.conv_3 = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='valid')
         self.dropout_3 = tf.keras.layers.Dropout(dropout_rate)
         self.bn_3 = tf.keras.layers.BatchNormalization()
         self.ac_3 = tf.keras.layers.Activation('relu')
@@ -33,7 +35,7 @@ class SimpleFCN(tf.keras.Model):
         self.dropout_out = tf.keras.layers.Dropout(dropout_rate)
         self.bn_out = tf.keras.layers.BatchNormalization()
         self.ac_out = tf.keras.layers.Activation('softmax')
-        self.reshape_out = tf.keras.layers.Reshape(target_shape=(128*128, nr_classes))
+        self.reshape_out = tf.keras.layers.Reshape(target_shape=self.out_shape)
 
     @tf.function
     def call(self, inputs, training=None):
@@ -60,6 +62,7 @@ class SimpleFCN(tf.keras.Model):
         x = self.dropout_out(x, training=training)
         x = self.bn_out(x, training=training)
 
+        # output
         prediction = self.ac_out(x)
         prediction = self.reshape_out(prediction)
 

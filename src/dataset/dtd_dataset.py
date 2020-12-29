@@ -4,6 +4,8 @@ import numpy as np
 import tensorflow as tf
 from pathlib import Path
 
+from src.settings.settings import Settings
+
 
 class DTDDataset:
     """
@@ -16,14 +18,14 @@ class DTDDataset:
     __instance = None
 
     @staticmethod
-    def get_instance(data_path: str, log: bool = False):
+    def get_instance(data_path: str, settings: Settings, log: bool = False):
         """ Static access method. """
         if DTDDataset.__instance is None:
-            DTDDataset(data_path, log)
+            DTDDataset(data_path, settings=settings, log=log)
 
         return DTDDataset.__instance
 
-    def __init__(self, data_path: str, log: bool = False, name: str = 'DTD'):
+    def __init__(self, data_path: str, settings: Settings, log: bool = False, name: str = 'DTD'):
         """ Virtually private constructor. """
         # throw exception if at initialization an instance already exists
         if DTDDataset.__instance is not None:
@@ -36,14 +38,7 @@ class DTDDataset:
         self.data_path = data_path
         self.log = log
         self.name = name
-
-        # configs
-        # TODO: move in seperate config file
-        self.batch_size = 16
-        self.n_classes = 47
-        self.patch_size = 128
-        self.patch_channels = 1  # 1: gray, 3: color
-        self.patch_border = 0
+        self.settings = settings
 
         # True: one hot encoding for categorical
         # False: no one hot encoding for sparse catecorical
@@ -57,15 +52,15 @@ class DTDDataset:
         # load datasets
         self.train_ds, train_size = self.create_dataset(
             os.path.join(data_path, 'dtd_train'))
-        self.train_steps = math.floor(train_size / self.batch_size)
+        self.train_steps = math.floor(train_size / self.settings.batch_size)
 
         self.val_ds, val_size = self.create_dataset(
             os.path.join(data_path, 'dtd_val'))
-        self.val_steps = math.floor(val_size / self.batch_size)
+        self.val_steps = math.floor(val_size / self.settings.batch_size)
 
         self.test_ds, test_size = self.create_dataset(
             os.path.join(data_path, 'dtd_test'))
-        self.test_steps = math.floor(test_size / self.batch_size)
+        self.test_steps = math.floor(test_size / self.settings.batch_size)
 
     def _parse_function(self, image_filename, label_filename, channels: int):
         """
@@ -111,30 +106,35 @@ class DTDDataset:
         # read the images
         dataset = dataset.map(
             lambda image, file: self._parse_function(
-                image, file, self.patch_channels))
+                image, file, self.settings.patch_channels))
         # Set the sizes of the input image, as keras needs to know them
         dataset = dataset.map(
             lambda x, y: (
                 tf.reshape(x, shape=(
-                    self.patch_size, self.patch_size, self.patch_channels)),
+                    self.settings.patch_size, self.settings.patch_size, self.settings.patch_channels)),
                 tf.reshape(y, shape=(
-                        self.patch_size, self.patch_size))))
+                        self.settings.patch_size, self.settings.patch_size))))
         # cut center of the label image in order to use valid filtering in the
         # network
-        b = self.patch_border
+        b = self.settings.patch_border
         if b != 0:
-            dataset = dataset.map(lambda x, y:
-                                  (x, y[b:-b, b:-b, :]))
+            if self.settings.patch_channels == 1:
+                dataset = dataset.map(lambda x, y:
+                                      (x, y[b:-b, b:-b]))
+            else:
+                dataset = dataset.map(lambda x, y:
+                                      (x, y[b:-b, b:-b, :]))
+
         if self.one_hot:
             # reshape the labels to 1d array and do one-hot encoding
             dataset = dataset.map(lambda x, y:
-                                (x, tf.reshape(y, shape=[-1])))
+                                  (x, tf.reshape(y, shape=[-1])))
             dataset = dataset.map(
                 lambda x, y: (
                     x, tf.one_hot(
-                        y, depth=self.n_classes, dtype=tf.float32)))
+                        y, depth=self.settings.n_classes, dtype=tf.float32)))
 
         # batch dataset
-        dataset = dataset.batch(self.batch_size).prefetch(1000).repeat()
+        dataset = dataset.batch(self.settings.batch_size).prefetch(1000).repeat()
 
         return dataset, image_files_array.size
