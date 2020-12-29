@@ -72,6 +72,9 @@ class UNet(tf.keras.Model):
         self.conv_act_out = tf.keras.layers.Activation('relu')
         self.act_out = tf.keras.layers.Activation('softmax', name='outputs')
 
+        # reshape before output (converts 2D to 1D), for pixel-wise loss
+        self.reshape_out = tf.keras.layers.Reshape(target_shape=self.out_shape)
+
     @tf.function
     def call(self, inputs, training=None):
         x = inputs
@@ -97,5 +100,6 @@ class UNet(tf.keras.Model):
         x = self.conv_out(x)
         x = self.conv_act_out(x)
         prediction = self.act_out(x)
+        prediction = self.reshape_out(prediction)
 
         return prediction

@@ -3,27 +3,35 @@ import tensorflow as tf
 from src.dataset.dtd_dataset import DTDDataset
 from src.models.simple_fcn import SimpleFCN
 from src.models.u_net.u_net_model import UNet
-from src.settings.settings import Settings
+from src.settings.settings import Settings, Models
 from src.utils.utils import create_experiment_folders
 
 
 if __name__ == '__main__':
     # global settings
     settings = Settings()
+
     # create dataset
-    data_path = 'data'
-    dataset = DTDDataset.get_instance(data_path, settings=settings)
+    dataset = DTDDataset.get_instance(settings)
 
     # create and build the model
-    # model = SimpleFCN(settings.n_classes,
-                      # settings.patch_size,
-                      # settings.patch_border,
-                      # settings.patch_channels,
-                      # dropout_rate=0.3)
-    model = UNet(num_classes=settings.n_classes,
-                 img_size=settings.patch_size,
-                 img_border=settings.patch_border,
-                 nr_channels=settings.patch_channels)
+    if settings.model is Models.SIMPLE_FCN:
+        # Simple FCN
+        model = SimpleFCN(settings.n_classes,
+                          settings.patch_size,
+                          settings.patch_border,
+                          settings.patch_channels,
+                          dropout_rate=settings.dropout_rate)
+
+    elif settings.model is Models.U_NET:
+        # U-Net
+        model = UNet(num_classes=settings.n_classes,
+                     img_size=settings.patch_size,
+                     img_border=settings.patch_border,
+                     nr_channels=settings.patch_channels,
+                     layer_depth=settings.layer_depth,
+                     filters_root=settings.filters_root,
+                     dropout_rate=settings.dropout_rate)
 
     # build the model
     in_shape = [settings.batch_size,
@@ -37,11 +45,15 @@ if __name__ == '__main__':
     paths = create_experiment_folders(dataset.name,
                                       model.model_name)
 
-    # compile the model
+    # define the loss function
     loss = tf.keras.losses.categorical_crossentropy
+    # define the optimizer
     optimizer = tf.keras.optimizers.Adam(lr=1e-2)
+    # define the metrics to track and visualize in tensorboard
     metrics = ['categorical_crossentropy',
                'categorical_accuracy']
+
+    # compile the model
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=metrics)
@@ -59,5 +71,5 @@ if __name__ == '__main__':
               validation_data=dataset.val_ds,
               validation_steps=dataset.val_steps,
               steps_per_epoch=dataset.train_steps,
-              epochs=50,
+              epochs=settings.epochs,
               callbacks=callbacks)

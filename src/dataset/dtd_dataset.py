@@ -2,6 +2,7 @@ import os
 import math
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.layers.experimental.preprocessing import RandomFlip, RandomRotation
 from pathlib import Path
 
 from src.settings.settings import Settings
@@ -18,14 +19,15 @@ class DTDDataset:
     __instance = None
 
     @staticmethod
-    def get_instance(data_path: str, settings: Settings, log: bool = False):
+    def get_instance(settings: Settings, log: bool = False):
         """ Static access method. """
         if DTDDataset.__instance is None:
-            DTDDataset(data_path, settings=settings, log=log)
+            DTDDataset(settings=settings, log=log)
 
         return DTDDataset.__instance
 
-    def __init__(self, data_path: str, settings: Settings, log: bool = False, name: str = 'DTD'):
+    def __init__(self, settings: Settings,
+                 log: bool = False, name: str = 'DTD'):
         """ Virtually private constructor. """
         # throw exception if at initialization an instance already exists
         if DTDDataset.__instance is not None:
@@ -35,10 +37,10 @@ class DTDDataset:
             DTDDataset.__instance = self
 
         # parameters
-        self.data_path = data_path
         self.log = log
         self.name = name
         self.settings = settings
+        self.AUTOTUNE = tf.data.experimental.AUTOTUNE
 
         # True: one hot encoding for categorical
         # False: no one hot encoding for sparse catecorical
@@ -49,17 +51,22 @@ class DTDDataset:
         self.val_ds = None
         self.test_ds = None
 
+        # define data augmentation
+        self.data_augmentation = tf.keras.Sequential([
+            RandomFlip("horizontal_and_vertical"),
+            RandomRotation(0.2)])
+
         # load datasets
         self.train_ds, train_size = self.create_dataset(
-            os.path.join(data_path, 'dtd_train'))
+            os.path.join(self.settings.dataset_path, 'dtd_train'))
         self.train_steps = math.floor(train_size / self.settings.batch_size)
 
         self.val_ds, val_size = self.create_dataset(
-            os.path.join(data_path, 'dtd_val'))
+            os.path.join(self.settings.dataset_path, 'dtd_val'))
         self.val_steps = math.floor(val_size / self.settings.batch_size)
 
         self.test_ds, test_size = self.create_dataset(
-            os.path.join(data_path, 'dtd_test'))
+            os.path.join(self.settings.dataset_path, 'dtd_test'))
         self.test_steps = math.floor(test_size / self.settings.batch_size)
 
     def _parse_function(self, image_filename, label_filename, channels: int):
@@ -134,7 +141,13 @@ class DTDDataset:
                     x, tf.one_hot(
                         y, depth=self.settings.n_classes, dtype=tf.float32)))
 
+        if self.settings.augment:
+            dataset = dataset.map(
+                lambda x,y: (tf.squeeze(self.data_augmentation(tf.expand_dims(x, 0), training=True), 0), y),
+                num_parallel_calls=self.AUTOTUNE)
+
         # batch dataset
-        dataset = dataset.batch(self.settings.batch_size).prefetch(1000).repeat()
+        dataset = dataset.batch(
+            self.settings.batch_size).prefetch(1000).repeat()
 
         return dataset, image_files_array.size
