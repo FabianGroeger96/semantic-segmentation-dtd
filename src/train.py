@@ -35,18 +35,24 @@ if __name__ == '__main__':
                      dropout_rate=settings.dropout_rate)
     elif settings.model is Models.RESNEST:
         # ResNeSt
-        model = ResNest(verbose=True,
-                        input_shape=(settings.patch_size, settings.patch_size, settings.patch_channels),
-                        n_classes=settings.n_classes,
-                        dropout_rate=settings.dropout_rate,
-                        blocks_set=[3,4,6,3],
-                        stem_width=32,
-                        radix=2,
-                        groups=1,
-                        bottleneck_width=64,
-                        deep_stem=True,
-                        avg_down=True, avd=True, avd_first=False,
-                        using_cb=True).build()
+        input_shape = [settings.patch_size,
+                       settings.patch_size,
+                       settings.patch_channels]
+        model = ResNest(
+            verbose=True,
+            input_shape=input_shape,
+            n_classes=settings.n_classes,
+            dropout_rate=settings.dropout_rate,
+            blocks_set=[3, 4, 6, 3],
+            stem_width=32,
+            radix=2,
+            groups=1,
+            bottleneck_width=64,
+            deep_stem=True,
+            avg_down=True,
+            avd=True,
+            avd_first=False,
+            using_cb=True).build()
         model.model_name = 'ResNeSt'
 
     # build the model
@@ -55,10 +61,7 @@ if __name__ == '__main__':
                 settings.patch_size,
                 settings.patch_channels]
     model.build(in_shape)
-    test = tf.ones(in_shape, dtype=tf.float32)
-    print(model(test, training=False))
-    raise ValueError()
-    #print(model.summary())
+    print(model.summary())
 
     # create the paths for the experiment
     paths = create_experiment_folders(dataset.name,

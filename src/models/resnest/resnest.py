@@ -1,11 +1,11 @@
-# code from: https://github.com/QiaoranC/tf_ResNeSt_RegNet_model
+# based on: https://github.com/QiaoranC/tf_ResNeSt_RegNet_model
 
 import tensorflow as tf
 
-# tf.enable_eager_execution()
-# tf.compat.v1.enable_eager_execution()
+from src.models.resnest.mish_activation import Mish, mish
+from src.models.resnest.grouped_convolution import GroupedConv2D
+
 from tensorflow.keras import models
-from tensorflow.keras.activations import softmax
 from tensorflow.keras.utils import get_custom_objects
 from tensorflow.keras.layers import (
     Activation,
@@ -13,7 +13,6 @@ from tensorflow.keras.layers import (
     AveragePooling2D,
     BatchNormalization,
     Conv2D,
-    Dense,
     Dropout,
     GlobalAveragePooling2D,
     Input,
@@ -27,97 +26,11 @@ from tensorflow.keras.layers import (
 IMAGE_ORDERING = 'channels_last'
 MERGE_AXIS = -1
 
-def get_flops(model):
-    run_meta = tf.compat.v1.RunMetadata()
-    opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
-
-    # We use the Keras session graph in the call to the profiler.
-    flops = tf.compat.v1.profiler.profile(
-        graph=tf.compat.v1.keras.backend.get_session().graph,
-        run_meta=run_meta, cmd="op", options=opts)
-
-    return flops.total_float_ops  # Prints the "flops" of the model.
-
-
-class Mish(Activation):
-    """
-    based on https://github.com/digantamisra98/Mish/blob/master/Mish/TFKeras/mish.py
-    Mish Activation Function.
-    """
-
-    def __init__(self, activation, **kwargs):
-        super(Mish, self).__init__(activation, **kwargs)
-        self.__name__ = "Mish"
-
-
-def mish(inputs):
-    # with tf.device("CPU:0"):
-    result = inputs * tf.math.tanh(tf.math.softplus(inputs))
-    return result
-
-
-class GroupedConv2D(object):
-    """Groupped convolution.
-    https://github.com/tensorflow/tpu/blob/master/models/official/mnasnet/mixnet/custom_py
-    Currently tf.keras and tf.layers don't support group convolution, so here we
-    use split/concat to implement this op. It reuses kernel_size for group
-    definition, where len(kernel_size) is number of groups. Notably, it allows
-    different group has different kernel size.
-    """
-
-    def __init__(self, filters, kernel_size, use_keras=True, **kwargs):
-        """Initialize the layer.
-        Args:
-        filters: Integer, the dimensionality of the output space.
-        kernel_size: An integer or a list. If it is a single integer, then it is
-            same as the original Conv2D. If it is a list, then we split the channels
-            and perform different kernel for each group.
-        use_keras: An boolean value, whether to use keras layer.
-        **kwargs: other parameters passed to the original conv2d layer.
-        """
-        self._groups = len(kernel_size)
-        self._channel_axis = -1
-
-        self._convs = []
-        splits = self._split_channels(filters, self._groups)
-        for i in range(self._groups):
-            self._convs.append(
-                self._get_conv2d(
-                    splits[i],
-                    kernel_size[i],
-                    use_keras, **kwargs))
-
-    def _get_conv2d(self, filters, kernel_size, use_keras, **kwargs):
-        """A helper function to create Conv2D layer."""
-        if use_keras:
-            return Conv2D(filters=filters, kernel_size=kernel_size, **kwargs)
-        else:
-            return Conv2D(filters=filters, kernel_size=kernel_size, **kwargs)
-
-    def _split_channels(self, total_filters, num_groups):
-        split = [total_filters // num_groups for _ in range(num_groups)]
-        split[0] += total_filters - sum(split)
-        return split
-
-    def __call__(self, inputs):
-        if len(self._convs) == 1:
-            return self._convs[0](inputs)
-
-        if tf.__version__ < "2.0.0":
-            filters = inputs.shape[self._channel_axis].value
-        else:
-            filters = inputs.shape[self._channel_axis]
-        splits = self._split_channels(filters, len(self._convs))
-        x_splits = tf.split(inputs, splits, self._channel_axis)
-        x_outputs = [c(x) for x, c in zip(x_splits, self._convs)]
-        x = tf.concat(x_outputs, self._channel_axis)
-        return x
-
 
 class ResNest:
     def __init__(
-            self, verbose=False, input_shape=(224, 224, 3),
-            active="relu", n_classes=81, dropout_rate=0.2, fc_activation=None,
+            self, verbose=False, input_shape=(128, 128, 1),
+            active="relu", n_classes=47, dropout_rate=0.2, fc_activation=None,
             blocks_set=[3, 4, 6, 3],
             radix=2, groups=1, bottleneck_width=64, deep_stem=True,
             stem_width=32, block_expansion=4, avg_down=True, avd=True,
@@ -203,7 +116,6 @@ class ResNest:
 
     def _rsoftmax(self, input_tensor, filters, radix, groups):
         x = input_tensor
-        batch = x.shape[0]
         if radix > 1:
             x = tf.reshape(x, [-1, groups, radix, filters // groups])
             x = tf.transpose(x, [0, 2, 1, 3])
@@ -211,6 +123,7 @@ class ResNest:
             x = tf.reshape(x, [-1, 1, 1, radix * filters])
         else:
             x = Activation("sigmoid")(x)
+
         return x
 
     def _SplAtConv2d(
@@ -234,7 +147,6 @@ class ResNest:
         x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = Activation(self.active)(x)
 
-        batch, rchannel = x.shape[0], x.shape[-1]
         if radix > 1:
             splited = tf.split(x, radix, axis=-1)
             gap = sum(splited)
@@ -593,7 +505,6 @@ class ResNest:
             if self.verbose:
                 print('----- layer {} out {} -----'.format(idx, x.shape))
 
-
         o = fs[-1]
         print(o.shape)
         o = (ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING))(o)
@@ -650,9 +561,9 @@ class ResNest:
         o = (BatchNormalization())(o)
         print('out', o.shape)
 
-        o = UpSampling2D((2,2), data_format=IMAGE_ORDERING)(o)
+        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
         o = Conv2D(self.n_classes, (3, 3), padding='same',
-                    data_format=IMAGE_ORDERING)(o)
+                   data_format=IMAGE_ORDERING)(o)
 
         o = Activation('softmax')(o)
         o = Reshape(target_shape=(128*128, 47))(o)
