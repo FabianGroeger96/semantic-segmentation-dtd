@@ -653,6 +653,8 @@ class ResNest:
         o = UpSampling2D((2,2), data_format=IMAGE_ORDERING)(o)
         o = Conv2D(self.n_classes, (3, 3), padding='same',
                     data_format=IMAGE_ORDERING)(o)
+
+        o = Activation('softmax')(o)
         o = Reshape(target_shape=(128*128, 47))(o)
         print('out', o.shape)
 
