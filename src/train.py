@@ -1,10 +1,11 @@
 import tensorflow as tf
 
 from src.dataset.dtd_dataset import DTDDataset
-from src.models.simple_fcn import SimpleFCN
+from src.models.fcn.simple_fcn import SimpleFCN
 from src.models.u_net.u_net_model import UNet
 from src.settings.settings import Settings, Models
 from src.utils.utils import create_experiment_folders
+from src.models.resnest.resnest import ResNest
 
 
 if __name__ == '__main__':
@@ -32,23 +33,42 @@ if __name__ == '__main__':
                      layer_depth=settings.layer_depth,
                      filters_root=settings.filters_root,
                      dropout_rate=settings.dropout_rate)
+    elif settings.model is Models.RESNEST:
+        # ResNeSt
+        model = ResNest(verbose=True,
+                        input_shape=(settings.patch_size, settings.patch_size, settings.patch_channels),
+                        n_classes=settings.n_classes,
+                        dropout_rate=settings.dropout_rate,
+                        blocks_set=[3,4,6,3],
+                        stem_width=32,
+                        radix=2,
+                        groups=1,
+                        bottleneck_width=64,
+                        deep_stem=True,
+                        avg_down=True, avd=True, avd_first=False,
+                        using_cb=True).build()
+        model.model_name = 'ResNeSt'
 
     # build the model
-    in_shape = [settings.batch_size,
+    in_shape = [1,
                 settings.patch_size,
                 settings.patch_size,
                 settings.patch_channels]
     model.build(in_shape)
-    print(model.summary())
+    test = tf.ones(in_shape, dtype=tf.float32)
+    print(model(test, training=False))
+    raise ValueError()
+    #print(model.summary())
 
     # create the paths for the experiment
     paths = create_experiment_folders(dataset.name,
-                                      model.model_name)
+                                      model.model_name,
+                                      post_fix='lr1e3')
 
     # define the loss function
     loss = tf.keras.losses.categorical_crossentropy
     # define the optimizer
-    optimizer = tf.keras.optimizers.Adam(lr=1e-2)
+    optimizer = tf.keras.optimizers.Adam(lr=1e-3)
     # define the metrics to track and visualize in tensorboard
     metrics = ['categorical_crossentropy',
                'categorical_accuracy']
@@ -64,7 +84,7 @@ if __name__ == '__main__':
                  tf.keras.callbacks.TensorBoard(log_dir=paths['tensorboard'],
                                                 update_freq=1,
                                                 histogram_freq=1,
-                                                profile_batch=50,
+                                                profile_batch=0,
                                                 write_graph=True)]
     # train the model
     model.fit(dataset.train_ds,

@@ -2,13 +2,15 @@ import os
 from datetime import datetime
 
 
-def create_experiment_folders(dataset_folder, model_name):
+def create_experiment_folders(dataset_folder, model_name, post_fix=''):
     experiment_dir = 'experiments'
     # create folder for experiments with current dataset
     dataset_path = create_folder(os.path.join(experiment_dir, dataset_folder))
     # create current experiment folder
     current_time = datetime.now().strftime('%d%m%Y-%H%M%S')
-    experiment_folder_name = '{0}-{1}'.format(model_name, current_time)
+    experiment_folder_name = '{0}-{1}-{2}'.format(model_name,
+                                                  post_fix,
+                                                  current_time)
     experiment_path = create_folder(
         os.path.join(
             dataset_path,
