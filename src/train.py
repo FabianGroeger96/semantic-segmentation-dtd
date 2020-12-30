@@ -43,7 +43,7 @@ if __name__ == '__main__':
             input_shape=input_shape,
             n_classes=settings.n_classes,
             dropout_rate=settings.dropout_rate,
-            blocks_set=[3, 4, 6, 3],
+            blocks_set=[2, 2, 2, 2],  # ResNeSt18: [2, 2, 2, 2], ResNeSt50: [3, 4, 6, 3]
             stem_width=32,
             radix=2,
             groups=1,
