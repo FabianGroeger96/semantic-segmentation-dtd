@@ -6,7 +6,7 @@ class Settings:
     def __init__(self):
         # global configs
         self.epochs = 50
-        self.batch_size = 1
+        self.batch_size = 16
 
         # model config
         self.model = Models.RESNEST

@@ -112,6 +112,7 @@ class ResNest:
                 data_format="channels_last")(x)
             # x = BatchNormalization(axis=self.channel_axis,epsilon=1.001e-5)(x)
             # x = Activation(self.active)(x)
+
         return x
 
     def _rsoftmax(self, input_tensor, filters, radix, groups):
@@ -174,6 +175,7 @@ class ResNest:
             out = sum([a * b for a, b in zip(splited, logits)])
         else:
             out = atten * x
+
         return out
 
     def _make_block(
@@ -278,6 +280,7 @@ class ResNest:
 
         m2 = Add()([x, short_cut])
         m2 = Activation(self.active)(m2)
+
         return m2
 
     def _make_block_basic(
@@ -369,6 +372,7 @@ class ResNest:
             use_bias=False,
             data_format="channels_last")(x)
         m2 = Add()([x, short_cut])
+
         return m2
 
     def _make_layer(self, input_tensor, blocks=4,
@@ -419,6 +423,7 @@ class ResNest:
                     avd=self.avd,
                     avd_first=self.avd_first)
                 # print(i,x.shape)
+
         return x
 
     def _make_Composite_layer(
@@ -429,19 +434,19 @@ class ResNest:
         x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         if upsample:
             x = UpSampling2D(size=2)(x)
+
         return x
 
     def build(self):
         get_custom_objects().update({'mish': Mish(mish)})
 
-        print(self.input_shape)
+        # downsampling
         input_sig = Input(shape=self.input_shape)
         x = self._make_stem(
             input_sig,
             stem_width=self.stem_width,
             deep_stem=self.deep_stem)
         f1 = x
-        print(x.shape)
 
         if self.preact is False:
             x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
@@ -477,7 +482,6 @@ class ResNest:
         if self.verbose:
             print("-" * 5, "layer 0 out", x.shape, "-" * 5)
         f2 = x
-        print(x.shape)
 
         fs = []
         b1_b3_filters = [64, 128, 256, 512]
@@ -495,71 +499,60 @@ class ResNest:
                         'layer {} db_com out {}'.format(
                             idx, second_x_tmp.shape))
                 x = Add()([second_x_tmp, x])
-                print(x.shape)
             x = self._make_layer(
                 x, blocks=self.blocks_set[idx],
                 filters=b1_b3_filters[idx],
                 stride=2)
-            print(x.shape)
             fs.append(x)
             if self.verbose:
                 print('----- layer {} out {} -----'.format(idx, x.shape))
 
+        # upsampling
         o = fs[-1]
-        print(o.shape)
-        o = (ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING))(o)
+        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
         o = Conv2D(
                 512, (3, 3),
                 padding='valid', activation='relu',
                 data_format=IMAGE_ORDERING)(o)
-        o = (BatchNormalization())(o)
+        o = BatchNormalization()(o)
 
         f4 = fs[-2]
-        print('f4', f4.shape)
-        o = (UpSampling2D((2, 2), data_format=IMAGE_ORDERING))(o)
-        print('o', o.shape)
-        o = (concatenate([o, f4], axis=MERGE_AXIS))
-        o = (ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING))(o)
+        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
+        o = concatenate([o, f4], axis=MERGE_AXIS)
+        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
         o = Conv2D(
                 256, (3, 3),
                 padding='valid', activation='relu',
                 data_format=IMAGE_ORDERING)(o)
-        o = (BatchNormalization())(o)
-        print('out', o.shape)
+        o = BatchNormalization()(o)
 
         f3 = fs[-3]
-        o = (UpSampling2D((2, 2), data_format=IMAGE_ORDERING))(o)
-        o = (concatenate([o, f3], axis=MERGE_AXIS))
-        o = (ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING))(o)
-        o = (
-            Conv2D(
+        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
+        o = concatenate([o, f3], axis=MERGE_AXIS)
+        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
+        o = Conv2D(
                 128, (3, 3),
                 padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING))(o)
-        o = (BatchNormalization())(o)
-        print('out', o.shape)
+                data_format=IMAGE_ORDERING)(o)
+        o = BatchNormalization()(o)
 
-        o = (UpSampling2D((2, 2), data_format=IMAGE_ORDERING))(o)
-        o = (concatenate([o, f2], axis=MERGE_AXIS))
-        o = (ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING))(o)
-        o = (
-            Conv2D(
+        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
+        o = concatenate([o, f2], axis=MERGE_AXIS)
+        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
+        o = Conv2D(
                 64, (3, 3),
                 padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING))(o)
-        o = (BatchNormalization())(o)
-        print('out', o.shape)
+                data_format=IMAGE_ORDERING)(o)
+        o = BatchNormalization()(o)
 
-        o = (UpSampling2D((2, 2), data_format=IMAGE_ORDERING))(o)
-        o = (concatenate([o, f1], axis=MERGE_AXIS))
-        o = (ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING))(o)
-        o = (
-            Conv2D(
+        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
+        o = concatenate([o, f1], axis=MERGE_AXIS)
+        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
+        o = Conv2D(
                 32, (3, 3),
                 padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING))(o)
-        o = (BatchNormalization())(o)
-        print('out', o.shape)
+                data_format=IMAGE_ORDERING)(o)
+        o = BatchNormalization()(o)
 
         o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
         o = Conv2D(self.n_classes, (3, 3), padding='same',
@@ -567,7 +560,6 @@ class ResNest:
 
         o = Activation('softmax')(o)
         o = Reshape(target_shape=(128*128, 47))(o)
-        print('out', o.shape)
 
         model = models.Model(inputs=input_sig, outputs=o)
 

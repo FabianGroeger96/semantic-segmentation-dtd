@@ -66,12 +66,12 @@ if __name__ == '__main__':
     # create the paths for the experiment
     paths = create_experiment_folders(dataset.name,
                                       model.model_name,
-                                      post_fix='lr1e3')
+                                      post_fix='lr1e2')
 
     # define the loss function
     loss = tf.keras.losses.categorical_crossentropy
     # define the optimizer
-    optimizer = tf.keras.optimizers.Adam(lr=1e-3)
+    optimizer = tf.keras.optimizers.Adam(lr=1e-2)
     # define the metrics to track and visualize in tensorboard
     metrics = ['categorical_crossentropy',
                'categorical_accuracy']
