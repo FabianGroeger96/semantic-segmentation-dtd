@@ -9,7 +9,7 @@ class Settings:
         self.batch_size = 16
 
         # model config
-        self.model = Models.RESNEST
+        self.model = Models.RESNET
         self.layer_depth = 3
         self.filters_root = 64
         self.dropout_rate = 0.2
@@ -22,7 +22,9 @@ class Settings:
         self.patch_border = 0  # unet: 20, fcn: 3, resnest: 0
         self.augment = True
 
+
 class Models(Enum):
     SIMPLE_FCN = 1
     U_NET = 2
     RESNEST = 3
+    RESNET = 4

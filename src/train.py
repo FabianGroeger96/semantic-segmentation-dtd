@@ -3,9 +3,10 @@ import tensorflow as tf
 from src.dataset.dtd_dataset import DTDDataset
 from src.models.fcn.simple_fcn import SimpleFCN
 from src.models.u_net.u_net_model import UNet
+from src.models.resnest.resnest import ResNest
+from src.models.resnet.resnet import ResNet18
 from src.settings.settings import Settings, Models
 from src.utils.utils import create_experiment_folders
-from src.models.resnest.resnest import ResNest
 
 
 if __name__ == '__main__':
@@ -33,6 +34,7 @@ if __name__ == '__main__':
                      layer_depth=settings.layer_depth,
                      filters_root=settings.filters_root,
                      dropout_rate=settings.dropout_rate)
+
     elif settings.model is Models.RESNEST:
         # ResNeSt
         input_shape = [settings.patch_size,
@@ -48,12 +50,17 @@ if __name__ == '__main__':
             radix=2,
             groups=1,
             bottleneck_width=64,
-            deep_stem=True,
-            avg_down=True,
+            deep_stem=False,
+            avg_down=False,
             avd=True,
             avd_first=False,
-            using_cb=True).build()
+            using_cb=False).build()
         model.model_name = 'ResNeSt'
+
+    elif settings.model is Models.RESNET:
+        # ResNet
+        model = ResNet18()
+        model.model_name = 'ResNet'
 
     # build the model
     in_shape = [1,

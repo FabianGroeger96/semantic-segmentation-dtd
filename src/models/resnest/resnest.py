@@ -18,8 +18,6 @@ from tensorflow.keras.layers import (
     Input,
     MaxPool2D,
     UpSampling2D,
-    ZeroPadding2D,
-    concatenate,
     Reshape
 )
 
@@ -34,7 +32,7 @@ class ResNest:
             blocks_set=[3, 4, 6, 3],
             radix=2, groups=1, bottleneck_width=64, deep_stem=True,
             stem_width=32, block_expansion=4, avg_down=True, avd=True,
-            avd_first=False, preact=False, using_basic_block=False,
+            avd_first=False, using_basic_block=False,
             using_cb=False):
 
         self.channel_axis = -1  # not for change
@@ -59,11 +57,14 @@ class ResNest:
 
         # self.cardinality = 1
         self.dilation = 1
-        self.preact = preact
         self.using_basic_block = using_basic_block
         self.using_cb = using_cb
 
     def _make_stem(self, input_tensor, stem_width=64, deep_stem=False):
+        """
+        Builds the layers for the stem of the model.
+        """
+
         x = input_tensor
         if deep_stem:
             x = Conv2D(
@@ -73,9 +74,9 @@ class ResNest:
                 padding="same",
                 kernel_initializer="he_normal",
                 use_bias=False,
-                data_format="channels_last")(x)
+                name='stem_conv1')(x)
 
-            x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
+            x = BatchNormalization()(x)
             x = Activation(self.active)(x)
 
             x = Conv2D(
@@ -85,9 +86,9 @@ class ResNest:
                 padding="same",
                 kernel_initializer="he_normal",
                 use_bias=False,
-                data_format="channels_last")(x)
+                name='stem_conv2')(x)
 
-            x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
+            x = BatchNormalization()(x)
             x = Activation(self.active)(x)
 
             x = Conv2D(
@@ -97,10 +98,8 @@ class ResNest:
                 padding="same",
                 kernel_initializer="he_normal",
                 use_bias=False,
-                data_format="channels_last")(x)
+                name='stem_conv3')(x)
 
-            # x = BatchNormalization(axis=self.channel_axis,epsilon=1.001e-5)(x)
-            # x = Activation(self.active)(x)
         else:
             x = Conv2D(
                 stem_width,
@@ -109,9 +108,7 @@ class ResNest:
                 padding="same",
                 kernel_initializer="he_normal",
                 use_bias=False,
-                data_format="channels_last")(x)
-            # x = BatchNormalization(axis=self.channel_axis,epsilon=1.001e-5)(x)
-            # x = Activation(self.active)(x)
+                name='stem_conv')(x)
 
         return x
 
@@ -440,38 +437,34 @@ class ResNest:
     def build(self):
         get_custom_objects().update({'mish': Mish(mish)})
 
-        # downsampling
+        # downsampling, start encoder
         input_sig = Input(shape=self.input_shape)
+        if self.verbose:
+            print('Input shape', self.input_shape)
         x = self._make_stem(
             input_sig,
             stem_width=self.stem_width,
             deep_stem=self.deep_stem)
-        f1 = x
 
-        if self.preact is False:
-            x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
-            x = Activation(self.active)(x)
+        x = BatchNormalization()(x)
+        x = Activation(self.active)(x)
         if self.verbose:
-            print("stem_out", x.shape)
+            print("Stem out", x.shape)
 
         x = MaxPool2D(
             pool_size=3,
             strides=2,
             padding="same",
-            data_format="channels_last")(x)
+            name='stem_pooling')(x)
         if self.verbose:
             print("MaxPool2D out", x.shape)
-
-        if self.preact is True:
-            x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
-            x = Activation(self.active)(x)
 
         if self.using_cb:
             second_x = x
             second_x = self._make_layer(
                 x, blocks=self.blocks_set[0],
                 filters=64, stride=1, is_first=False)
-            second_x_tmp = self._make_Composite_layer(
+            second_x_tmp = self._make_composite_layer(
                 second_x, filters=x.shape[-1], upsample=False)
             if self.verbose:
                 print('layer 0 db_com', second_x_tmp.shape)
@@ -481,9 +474,7 @@ class ResNest:
             filters=64, stride=1, is_first=False)
         if self.verbose:
             print("-" * 5, "layer 0 out", x.shape, "-" * 5)
-        f2 = x
 
-        fs = []
         b1_b3_filters = [64, 128, 256, 512]
         for i in range(3):
             idx = i+1
@@ -503,71 +494,79 @@ class ResNest:
                 x, blocks=self.blocks_set[idx],
                 filters=b1_b3_filters[idx],
                 stride=2)
-            fs.append(x)
             if self.verbose:
                 print('----- layer {} out {} -----'.format(idx, x.shape))
 
-        # upsampling
-        o = fs[-1]
-        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
-        o = Conv2D(
-                512, (3, 3),
-                padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING)(o)
-        o = BatchNormalization()(o)
+        # regularization
+        x = Dropout(self.dropout_rate)(x)
 
-        f4 = fs[-2]
-        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
-        o = concatenate([o, f4], axis=MERGE_AXIS)
-        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
-        o = Conv2D(
-                256, (3, 3),
-                padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING)(o)
-        o = BatchNormalization()(o)
+        # upsampling, start decoder
+        x = tf.keras.layers.Conv2DTranspose(512, (4, 4),
+                                            strides=2,
+                                            padding='same',
+                                            kernel_initializer='he_normal',
+                                            name='deconv1')(x)
 
-        f3 = fs[-3]
-        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
-        o = concatenate([o, f3], axis=MERGE_AXIS)
-        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
-        o = Conv2D(
-                128, (3, 3),
-                padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING)(o)
-        o = BatchNormalization()(o)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        print('up 1', x.shape)
 
-        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
-        o = concatenate([o, f2], axis=MERGE_AXIS)
-        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
-        o = Conv2D(
-                64, (3, 3),
-                padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING)(o)
-        o = BatchNormalization()(o)
+        x = tf.keras.layers.Conv2DTranspose(256, (4, 4),
+                                            strides=2,
+                                            padding='same',
+                                            kernel_initializer='he_normal',
+                                            name='deconv2')(x)
 
-        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
-        o = concatenate([o, f1], axis=MERGE_AXIS)
-        o = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(o)
-        o = Conv2D(
-                32, (3, 3),
-                padding='valid', activation='relu',
-                data_format=IMAGE_ORDERING)(o)
-        o = BatchNormalization()(o)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        print('up 2', x.shape)
 
-        o = UpSampling2D((2, 2), data_format=IMAGE_ORDERING)(o)
-        o = Conv2D(self.n_classes, (3, 3), padding='same',
-                   data_format=IMAGE_ORDERING)(o)
+        x = tf.keras.layers.Conv2DTranspose(128, (4, 4),
+                                            strides=2,
+                                            padding='same',
+                                            kernel_initializer='he_normal',
+                                            name='deconv3')(x)
 
-        o = Activation('softmax')(o)
-        o = Reshape(target_shape=(128*128, 47))(o)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        print('up 3', x.shape)
 
-        model = models.Model(inputs=input_sig, outputs=o)
+        x = tf.keras.layers.Conv2DTranspose(64, (4, 4),
+                                            strides=2,
+                                            padding='same',
+                                            kernel_initializer='he_normal',
+                                            name='deconv4')(x)
+
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        print('up 4', x.shape)
+
+        x = tf.keras.layers.Conv2DTranspose(64, (4, 4),
+                                            strides=2,
+                                            padding='same',
+                                            kernel_initializer='he_normal',
+                                            name='deconv5')(x)
+
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Activation('relu')(x)
+        print('up 5', x.shape)
+
+        x = tf.keras.layers.Conv2D(self.n_classes, (1, 1),
+                                   activation='softmax',
+                                   padding='same',
+                                   kernel_initializer='he_normal',
+                                   name='pred_conv_layer')(x)
+        print('up out', x.shape)
+
+        x = Reshape(target_shape=(128*128, 47))(x)
+
+        model = models.Model(inputs=input_sig, outputs=x)
 
         if self.verbose:
             print(
                 "Resnest builded with input {}, output{}".format(
                     input_sig.shape,
-                    o.shape))
+                    x.shape))
             print("-------------------------------------------")
             print("")
 
