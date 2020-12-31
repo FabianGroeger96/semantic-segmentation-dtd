@@ -31,6 +31,8 @@ class ResNet(tf.keras.Model):
         """
         super(ResNet, self).__init__()
 
+        self.model_name = model_name
+
         self.l2_amount = 1e-5
         self.l2_regularization = tf.keras.regularizers.l2(1e-5)
 

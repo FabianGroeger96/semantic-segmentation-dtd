@@ -2,7 +2,7 @@ import os
 import math
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers.experimental.preprocessing import RandomFlip, RandomRotation
+from tensorflow.keras.layers.experimental.preprocessing import RandomFlip, RandomRotation, RandomContrast
 from pathlib import Path
 
 from src.settings.settings import Settings
@@ -54,19 +54,33 @@ class DTDDataset:
         # define data augmentation
         self.data_augmentation = tf.keras.Sequential([
             RandomFlip("horizontal_and_vertical"),
-            RandomRotation(0.2)])
+            RandomRotation(0.2),
+            RandomContrast(0.2),
+        ])
+
+        # define the folders of the dataset
+        train_folder = 'dtd_train'
+        val_folder = 'dtd_val'
+        test_folder = 'dtd_test'
+
+        # if tiled should be used
+        if settings.use_tiled:
+            if log: print('Using tiled dataset')
+            train_folder += '_tiled'
+            val_folder += '_tiled'
+            test_folder += '_tiled'
 
         # load datasets
         self.train_ds, train_size = self.create_dataset(
-            os.path.join(self.settings.dataset_path, 'dtd_train'))
+            os.path.join(self.settings.dataset_path, train_folder))
         self.train_steps = math.floor(train_size / self.settings.batch_size)
 
         self.val_ds, val_size = self.create_dataset(
-            os.path.join(self.settings.dataset_path, 'dtd_val'))
+            os.path.join(self.settings.dataset_path, val_folder))
         self.val_steps = math.floor(val_size / self.settings.batch_size)
 
         self.test_ds, test_size = self.create_dataset(
-            os.path.join(self.settings.dataset_path, 'dtd_test'))
+            os.path.join(self.settings.dataset_path, test_folder))
         self.test_steps = math.floor(test_size / self.settings.batch_size)
 
     def _parse_function(self, image_filename, label_filename, channels: int):
@@ -94,7 +108,8 @@ class DTDDataset:
 
         return image, label
 
-    def create_dataset(self, data_dir: str):
+    @staticmethod
+    def load_files(data_dir: str):
         path = Path(data_dir)
         image_files = list(path.glob('image*.png'))
         label_files = list(path.glob('label*.png'))
@@ -105,6 +120,11 @@ class DTDDataset:
 
         image_files_array = np.asarray([str(p) for p in image_files])
         label_files_array = np.asarray([str(p) for p in label_files])
+
+        return image_files_array, label_files_array
+
+    def create_dataset(self, data_dir: str):
+        image_files_array, label_files_array = self.load_files(data_dir)
 
         dataset = tf.data.Dataset.from_tensor_slices((image_files_array,
                                                       label_files_array))
@@ -143,7 +163,7 @@ class DTDDataset:
 
         if self.settings.augment:
             dataset = dataset.map(
-                lambda x,y: (tf.squeeze(self.data_augmentation(tf.expand_dims(x, 0), training=True), 0), y),
+                lambda x, y: (tf.squeeze(self.data_augmentation(tf.expand_dims(x, 0), training=True), 0), y),
                 num_parallel_calls=self.AUTOTUNE)
 
         # batch dataset

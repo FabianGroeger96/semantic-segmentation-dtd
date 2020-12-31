@@ -68,7 +68,7 @@ class UNet(tf.keras.Model):
             filters=num_classes, kernel_size=1,
             kernel_initializer=kernel_initializer,
             strides=1, padding='valid')
-        # TODO: check if BN here
+        self.bn_out = tf.keras.layers.BatchNormalization()
         self.conv_act_out = tf.keras.layers.Activation('relu')
         self.act_out = tf.keras.layers.Activation('softmax', name='outputs')
 
@@ -98,7 +98,9 @@ class UNet(tf.keras.Model):
 
         # output layer
         x = self.conv_out(x)
+        x = self.bn_out(x, training=training)
         x = self.conv_act_out(x)
+
         prediction = self.act_out(x)
         prediction = self.reshape_out(prediction)
 

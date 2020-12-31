@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
 from src.dataset.dtd_dataset import DTDDataset
@@ -14,11 +16,13 @@ if __name__ == '__main__':
     settings = Settings()
 
     # create dataset
-    dataset = DTDDataset.get_instance(settings)
+    dataset = DTDDataset.get_instance(settings=settings,
+                                      log=settings.log)
 
     # create and build the model
     if settings.model is Models.SIMPLE_FCN:
         # Simple FCN
+        lr = 1e-4
         model = SimpleFCN(settings.n_classes,
                           settings.patch_size,
                           settings.patch_border,
@@ -27,6 +31,7 @@ if __name__ == '__main__':
 
     elif settings.model is Models.U_NET:
         # U-Net
+        lr = 1e-4
         model = UNet(num_classes=settings.n_classes,
                      img_size=settings.patch_size,
                      img_border=settings.patch_border,
@@ -37,11 +42,12 @@ if __name__ == '__main__':
 
     elif settings.model is Models.RESNEST:
         # ResNeSt
+        lr = 1e-4
         input_shape = [settings.patch_size,
                        settings.patch_size,
                        settings.patch_channels]
         model = ResNest(
-            verbose=True,
+            verbose=settings.log,
             input_shape=input_shape,
             n_classes=settings.n_classes,
             dropout_rate=settings.dropout_rate,
@@ -59,8 +65,8 @@ if __name__ == '__main__':
 
     elif settings.model is Models.RESNET:
         # ResNet
+        lr = 1e-3
         model = ResNet18()
-        model.model_name = 'ResNet'
 
     # build the model
     in_shape = [1,
@@ -68,17 +74,17 @@ if __name__ == '__main__':
                 settings.patch_size,
                 settings.patch_channels]
     model.build(in_shape)
-    print(model.summary())
+    model.summary()
 
     # create the paths for the experiment
     paths = create_experiment_folders(dataset.name,
                                       model.model_name,
-                                      post_fix='lr1e2')
+                                      post_fix='{0}-{1}'.format(str(lr), str(settings.dropout_rate)))
 
     # define the loss function
     loss = tf.keras.losses.categorical_crossentropy
     # define the optimizer
-    optimizer = tf.keras.optimizers.Adam(lr=1e-2)
+    optimizer = tf.keras.optimizers.Adam(lr=lr)
     # define the metrics to track and visualize in tensorboard
     metrics = ['categorical_crossentropy',
                'categorical_accuracy']
@@ -93,7 +99,7 @@ if __name__ == '__main__':
                                                     save_best_only=True),
                  tf.keras.callbacks.TensorBoard(log_dir=paths['tensorboard'],
                                                 update_freq=1,
-                                                histogram_freq=1,
+                                                histogram_freq=10,
                                                 profile_batch=0,
                                                 write_graph=True)]
     # train the model
@@ -103,3 +109,7 @@ if __name__ == '__main__':
               steps_per_epoch=dataset.train_steps,
               epochs=settings.epochs,
               callbacks=callbacks)
+
+    # evaluate the model on the test set
+    model.evaluate(dataset.test_ds,
+                   callbacks=callbacks)

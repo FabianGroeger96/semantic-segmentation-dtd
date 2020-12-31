@@ -394,4 +394,4 @@ if __name__ == '__main__':
     download_and_convert(
         dataset_dir='data/',
         dest_dir_root='data/',
-        tiled=False)
+        tiled=True)

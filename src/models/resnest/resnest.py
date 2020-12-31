@@ -1,4 +1,5 @@
 # based on: https://github.com/QiaoranC/tf_ResNeSt_RegNet_model
+# adapted by Fabian Groeger (31.12.2020)
 
 import tensorflow as tf
 
@@ -20,9 +21,6 @@ from tensorflow.keras.layers import (
     UpSampling2D,
     Reshape
 )
-
-IMAGE_ORDERING = 'channels_last'
-MERGE_AXIS = -1
 
 
 class ResNest:
@@ -509,7 +507,8 @@ class ResNest:
 
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation('relu')(x)
-        print('up 1', x.shape)
+        if self.verbose:
+            print('up 1', x.shape)
 
         x = tf.keras.layers.Conv2DTranspose(256, (4, 4),
                                             strides=2,
@@ -519,7 +518,8 @@ class ResNest:
 
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation('relu')(x)
-        print('up 2', x.shape)
+        if self.verbose:
+            print('up 2', x.shape)
 
         x = tf.keras.layers.Conv2DTranspose(128, (4, 4),
                                             strides=2,
@@ -529,7 +529,8 @@ class ResNest:
 
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation('relu')(x)
-        print('up 3', x.shape)
+        if self.verbose:
+            print('up 3', x.shape)
 
         x = tf.keras.layers.Conv2DTranspose(64, (4, 4),
                                             strides=2,
@@ -539,7 +540,8 @@ class ResNest:
 
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation('relu')(x)
-        print('up 4', x.shape)
+        if self.verbose:
+            print('up 4', x.shape)
 
         x = tf.keras.layers.Conv2DTranspose(64, (4, 4),
                                             strides=2,
@@ -549,25 +551,27 @@ class ResNest:
 
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Activation('relu')(x)
-        print('up 5', x.shape)
+        if self.verbose:
+            print('up 5', x.shape)
 
         x = tf.keras.layers.Conv2D(self.n_classes, (1, 1),
                                    activation='softmax',
                                    padding='same',
                                    kernel_initializer='he_normal',
                                    name='pred_conv_layer')(x)
-        print('up out', x.shape)
-
         x = Reshape(target_shape=(128*128, 47))(x)
+        if self.verbose:
+            print('up out', x.shape)
 
+        # specify the model by setting input and output
         model = models.Model(inputs=input_sig, outputs=x)
 
         if self.verbose:
             print(
-                "Resnest builded with input {}, output{}".format(
+                "ResNeSt builded with input {}, output{}".format(
                     input_sig.shape,
                     x.shape))
-            print("-------------------------------------------")
+            print("-"*20)
             print("")
 
         return model
