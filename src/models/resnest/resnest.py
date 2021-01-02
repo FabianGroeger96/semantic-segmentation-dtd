@@ -74,7 +74,7 @@ class ResNest:
                 use_bias=False,
                 name='stem_conv1')(x)
 
-            x = BatchNormalization()(x)
+            x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
             x = Activation(self.active)(x)
 
             x = Conv2D(
@@ -86,7 +86,7 @@ class ResNest:
                 use_bias=False,
                 name='stem_conv2')(x)
 
-            x = BatchNormalization()(x)
+            x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
             x = Activation(self.active)(x)
 
             x = Conv2D(
@@ -444,7 +444,7 @@ class ResNest:
             stem_width=self.stem_width,
             deep_stem=self.deep_stem)
 
-        x = BatchNormalization()(x)
+        x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = Activation(self.active)(x)
         if self.verbose:
             print("Stem out", x.shape)
@@ -505,7 +505,7 @@ class ResNest:
                                             kernel_initializer='he_normal',
                                             name='deconv1')(x)
 
-        x = tf.keras.layers.BatchNormalization()(x)
+        x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = tf.keras.layers.Activation('relu')(x)
         if self.verbose:
             print('up 1', x.shape)
@@ -516,7 +516,7 @@ class ResNest:
                                             kernel_initializer='he_normal',
                                             name='deconv2')(x)
 
-        x = tf.keras.layers.BatchNormalization()(x)
+        x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = tf.keras.layers.Activation('relu')(x)
         if self.verbose:
             print('up 2', x.shape)
@@ -527,7 +527,7 @@ class ResNest:
                                             kernel_initializer='he_normal',
                                             name='deconv3')(x)
 
-        x = tf.keras.layers.BatchNormalization()(x)
+        x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = tf.keras.layers.Activation('relu')(x)
         if self.verbose:
             print('up 3', x.shape)
@@ -538,7 +538,7 @@ class ResNest:
                                             kernel_initializer='he_normal',
                                             name='deconv4')(x)
 
-        x = tf.keras.layers.BatchNormalization()(x)
+        x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = tf.keras.layers.Activation('relu')(x)
         if self.verbose:
             print('up 4', x.shape)
@@ -549,7 +549,7 @@ class ResNest:
                                             kernel_initializer='he_normal',
                                             name='deconv5')(x)
 
-        x = tf.keras.layers.BatchNormalization()(x)
+        x = BatchNormalization(axis=self.channel_axis, epsilon=1.001e-5)(x)
         x = tf.keras.layers.Activation('relu')(x)
         if self.verbose:
             print('up 5', x.shape)

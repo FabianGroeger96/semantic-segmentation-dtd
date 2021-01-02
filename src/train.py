@@ -1,5 +1,4 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
 from src.dataset.dtd_dataset import DTDDataset
@@ -11,7 +10,24 @@ from src.settings.settings import Settings, Models
 from src.utils.utils import create_experiment_folders
 
 
+def check_if_GPUs():
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been
+            print(e)
+
+
 if __name__ == '__main__':
+    # check if GPU
+    check_if_GPUs()
+
     # global settings
     settings = Settings()
 
@@ -42,7 +58,7 @@ if __name__ == '__main__':
 
     elif settings.model is Models.RESNEST:
         # ResNeSt
-        lr = 1e-4
+        lr = 1e-2
         input_shape = [settings.patch_size,
                        settings.patch_size,
                        settings.patch_channels]
@@ -51,7 +67,8 @@ if __name__ == '__main__':
             input_shape=input_shape,
             n_classes=settings.n_classes,
             dropout_rate=settings.dropout_rate,
-            blocks_set=[2, 2, 2, 2],  # ResNeSt18: [2, 2, 2, 2], ResNeSt50: [3, 4, 6, 3]
+            # ResNeSt18: [2, 2, 2, 2], ResNeSt50: [3, 4, 6, 3]
+            blocks_set=[2, 2, 2, 2],
             stem_width=32,
             radix=2,
             groups=1,
@@ -79,7 +96,8 @@ if __name__ == '__main__':
     # create the paths for the experiment
     paths = create_experiment_folders(dataset.name,
                                       model.model_name,
-                                      post_fix='{0}-{1}'.format(str(lr), str(settings.dropout_rate)))
+                                      post_fix='{0}-{1}'.format(str(lr),
+                                                                str(settings.dropout_rate)))
 
     # define the loss function
     loss = tf.keras.losses.categorical_crossentropy
