@@ -115,6 +115,8 @@ if __name__ == '__main__':
     # define the callbacks
     callbacks = [tf.keras.callbacks.ModelCheckpoint(paths['save'],
                                                     save_best_only=True),
+                 tf.keras.callbacks.CSVLogger(os.path.join(paths['log'],
+                                                           'training.log')),
                  tf.keras.callbacks.TensorBoard(log_dir=paths['tensorboard'],
                                                 update_freq=1,
                                                 histogram_freq=10,
