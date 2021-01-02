@@ -23,6 +23,12 @@ def check_if_GPUs():
             # Memory growth must be set before GPUs have been
             print(e)
 
+def scheduler(epoch, lr):
+    if epoch < 50:
+        return lr
+    else:
+        return lr * tf.math.exp(-0.1)
+
 
 if __name__ == '__main__':
     # check if GPU
@@ -117,6 +123,7 @@ if __name__ == '__main__':
                                                     save_best_only=True),
                  tf.keras.callbacks.CSVLogger(os.path.join(paths['log'],
                                                            'training.log')),
+                 tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1),
                  tf.keras.callbacks.TensorBoard(log_dir=paths['tensorboard'],
                                                 update_freq=1,
                                                 histogram_freq=10,
