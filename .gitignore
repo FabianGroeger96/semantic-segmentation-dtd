@@ -266,5 +266,6 @@ tags
 
 # Project specifc
 data/
-experiments/
+# Removed experiments to commit models to Git LFS
+# experiments/
 .DS_Store
