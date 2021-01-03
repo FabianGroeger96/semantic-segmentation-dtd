@@ -8,6 +8,7 @@ from src.models.resnest.resnest import ResNest
 from src.models.resnet.resnet import ResNet18
 from src.settings.settings import Settings, Models
 from src.utils.utils import create_experiment_folders
+from src.utils.lr_tensorboard_callback import LRTensorBoardCallback
 
 
 def check_if_GPUs():
@@ -74,7 +75,7 @@ if __name__ == '__main__':
             n_classes=settings.n_classes,
             dropout_rate=settings.dropout_rate,
             # ResNeSt18: [2, 2, 2, 2], ResNeSt50: [3, 4, 6, 3]
-            blocks_set=[2, 2, 2, 2],
+            blocks_set=[3, 4, 6, 3],
             stem_width=32,
             radix=2,
             groups=1,
@@ -124,6 +125,7 @@ if __name__ == '__main__':
                  tf.keras.callbacks.CSVLogger(os.path.join(paths['log'],
                                                            'training.log')),
                  tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1),
+                 LRTensorBoardCallback(),
                  tf.keras.callbacks.TensorBoard(log_dir=paths['tensorboard'],
                                                 update_freq=1,
                                                 histogram_freq=10,
