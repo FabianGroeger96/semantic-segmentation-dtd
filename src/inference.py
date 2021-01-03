@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from src.settings.settings import Settings
 from src.dataset.dtd_dataset import DTDDataset
+from src.utils.utils import bcolors
 
 
 # generate a labeled color image
@@ -31,7 +32,7 @@ if __name__ == '__main__':
     settings = Settings()
 
     # model path
-    model_path = 'experiments/DTD/ResNeSt-0.0001-0.4-31122020-121452/saved_model/'
+    model_path = 'experiments/DTD/ResNeSt-0.001-0.4-03012021-004551/saved_model/'
 
     # create a distinct color map for verification
     cm = pylab.get_cmap('gist_rainbow')
@@ -45,7 +46,9 @@ if __name__ == '__main__':
     label_names.insert(0, 'Not defined')
 
     # read files
-    val_path = os.path.join(settings.dataset_path, 'dtd_val')
+    val_name = 'dtd_val'
+    if settings.use_tiled: val_name += '_tiled'
+    val_path = os.path.join(settings.dataset_path, val_name)
     image_files_array, label_files_array = DTDDataset.load_files(val_path)
 
     # get a random sample from the dataset
@@ -62,6 +65,14 @@ if __name__ == '__main__':
 
     # load the model
     model = tf.keras.models.load_model(model_path)
+
+    # evaluate on test set if needed
+    if False:
+        # create dataset
+        dataset = DTDDataset.get_instance(settings=settings,
+                                        log=settings.log)
+        # evaluate
+        model.evaluate(dataset.test_ds)
 
     # predict the random sample
     prediction = model.predict(tf.expand_dims(rand_img, axis=0))
@@ -83,5 +94,18 @@ if __name__ == '__main__':
     axs[2].set(title=f"{label_name}")
     axs[2].imshow(get_color_representation(rand_lbl))
 
-    print('lbl', label_value)
-    print('correct', occurence_dict.get(label_value, 0))
+    # transform the occurence dict, so that the key is the name of label rather
+    # then the index
+    occurence_dict_lbls = {'{0} ({1})'.format(label_names[key], str(key)): value for (key, value)
+                           in occurence_dict.items()}
+
+    # print summary of prediction
+    print(bcolors.OKGREEN + 'name of random img:' + bcolors.ENDC,
+          rand_lbl_path)
+    print(bcolors.OKGREEN + 'correct label:' + bcolors.ENDC,
+          label_value,
+          '(' + label_names[label_value] + ')')
+    print(bcolors.OKGREEN + 'how many predicted correct:' + bcolors.ENDC,
+          occurence_dict.get(label_value, 0))
+    print(bcolors.OKGREEN + 'predicted occurences:' + bcolors.ENDC,
+          occurence_dict_lbls)
