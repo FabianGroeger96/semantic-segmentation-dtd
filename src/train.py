@@ -124,7 +124,7 @@ if __name__ == '__main__':
                                                     save_best_only=True),
                  tf.keras.callbacks.CSVLogger(os.path.join(paths['log'],
                                                            'training.log')),
-                 tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1),
+                 tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=0),
                  LRTensorBoardCallback(),
                  tf.keras.callbacks.TensorBoard(log_dir=paths['tensorboard'],
                                                 update_freq=1,
