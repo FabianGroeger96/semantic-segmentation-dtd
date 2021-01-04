@@ -147,12 +147,8 @@ class DTDDataset:
         # network
         b = self.settings.patch_border
         if b != 0:
-            if self.settings.patch_channels == 1:
-                dataset = dataset.map(lambda x, y:
-                                      (x, y[b:-b, b:-b]))
-            else:
-                dataset = dataset.map(lambda x, y:
-                                      (x, y[b:-b, b:-b, :]))
+            dataset = dataset.map(lambda x, y:
+                                    (x, y[b:-b, b:-b]))
 
         if self.one_hot:
             # reshape the labels to 1d array and do one-hot encoding
