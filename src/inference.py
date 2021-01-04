@@ -32,7 +32,7 @@ if __name__ == '__main__':
     settings = Settings()
 
     # model path
-    model_path = 'experiments/DTD/ResNeSt-0.001-0.4-03012021-004551/saved_model/'
+    model_path = 'experiments/DTD/ResNeSt-0.001-0.4-02012021-141555/saved_model/'
 
     # create a distinct color map for verification
     cm = pylab.get_cmap('gist_rainbow')
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     model = tf.keras.models.load_model(model_path)
 
     # evaluate on test set if needed
-    if False:
+    if True:
         # create dataset
         dataset = DTDDataset.get_instance(settings=settings,
                                         log=settings.log)
