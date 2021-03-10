@@ -31,8 +31,8 @@ if __name__ == '__main__':
     # global settings
     settings = Settings()
 
-    # model path
-    model_path = 'experiments/DTD/ResNeSt-0.001-0.4-02012021-141555/saved_model/'
+    # model path: change to the model to test
+    model_path = 'experiments/DTD/ResNeSt-0.001-0.4-DTDColorPatches/saved_model/'
 
     # create a distinct color map for verification
     cm = pylab.get_cmap('gist_rainbow')
